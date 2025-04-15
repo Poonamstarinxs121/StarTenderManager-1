@@ -43,8 +43,12 @@ export default function CompaniesPage() {
     queryKey: ['/api/companies'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('/api/companies');
-        return response || [];
+        const response = await fetch('/api/companies');
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data || [];
       } catch (error) {
         console.error("Failed to fetch companies:", error);
         return [];
@@ -55,7 +59,7 @@ export default function CompaniesPage() {
   // Delete company mutation
   const deleteCompanyMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest(`/api/companies/${id}`, { method: 'DELETE' });
+      return apiRequest(`/api/companies/${id}`, 'DELETE');
     },
     onSuccess: () => {
       toast({
