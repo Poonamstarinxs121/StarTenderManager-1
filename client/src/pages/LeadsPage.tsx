@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,8 @@ import {
   Download, 
   CalendarDays, 
   ArrowUpRight,
-  Filter
+  Filter,
+  AlertCircle
 } from "lucide-react";
 import { 
   Select, 
@@ -21,6 +23,19 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import AddLeadModal from "@/components/leads/AddLeadModal";
 
 // This would be replaced with real API types
 interface Lead {
@@ -36,11 +51,82 @@ interface Lead {
 }
 
 export default function LeadsPage() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<number | null>(null);
   
-  // Mock data - would be replaced with API call
-  const leads: Lead[] = [
+  // Fetch Leads
+  const { data: leadsData = [], isLoading, refetch } = useQuery({
+    queryKey: ['/api/leads'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/leads');
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch leads:", error);
+        return [];
+      }
+    }
+  });
+  
+  // Delete Lead mutation
+  const deleteLeadMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/leads/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Lead deleted",
+        description: "The lead has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete lead: ${error}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle edit button click
+  const handleEditClick = (id: number) => {
+    setEditingLead(id);
+    setAddModalOpen(true);
+  };
+  
+  // Handle delete button click
+  const handleDeleteClick = (id: number) => {
+    setLeadToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleAddClick = () => {
+    setEditingLead(null);
+    setAddModalOpen(true);
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (leadToDelete) {
+      deleteLeadMutation.mutate(leadToDelete);
+    }
+  };
+  
+  // Use demo data if API returns empty
+  const useDemo = !isLoading && Array.isArray(leadsData) && leadsData.length === 0 && !searchQuery;
+  
+  // Demo Leads for empty state
+  const demoLeads: Lead[] = [
     {
       id: 1,
       title: "New Office Building Project",
@@ -98,13 +184,16 @@ export default function LeadsPage() {
     }
   ];
   
+  // Use demo data if API returns empty results
+  const leads = useDemo ? demoLeads : leadsData;
+
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch = 
-      lead.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.contactPerson.toLowerCase().includes(searchQuery.toLowerCase());
+      lead.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lead.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      lead.contactPerson?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesStatus = statusFilter === "all" || lead.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesStatus = statusFilter === "all" || lead.status?.toLowerCase() === statusFilter.toLowerCase();
     
     return matchesSearch && matchesStatus;
   });
@@ -130,7 +219,7 @@ export default function LeadsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button>
+          <Button onClick={handleAddClick}>
             <Plus className="h-4 w-4 mr-2" />
             Add Lead
           </Button>
