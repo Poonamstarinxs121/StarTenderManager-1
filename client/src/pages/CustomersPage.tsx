@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import {
   Mail, 
   Phone, 
   Eye, 
-  MoreVertical 
+  MoreVertical,
+  AlertCircle
 } from "lucide-react";
 import { 
   Tabs, 
@@ -28,6 +29,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import AddCustomerModal from "@/components/customers/AddCustomerModal";
 
 // This would be replaced with real API types
 interface Customer {
@@ -42,11 +56,82 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<number | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<number | null>(null);
   
-  // Mock data - would be replaced with API call
-  const customers: Customer[] = [
+  // Fetch Customers
+  const { data: customersData = [], isLoading, refetch } = useQuery({
+    queryKey: ['/api/customers'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/customers');
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch customers:", error);
+        return [];
+      }
+    }
+  });
+  
+  // Delete Customer mutation
+  const deleteCustomerMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/customers/${id}`, 'DELETE');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Customer deleted",
+        description: "The customer has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      setDeleteDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: `Failed to delete customer: ${error}`,
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Handle edit button click
+  const handleEditClick = (id: number) => {
+    setEditingCustomer(id);
+    setAddModalOpen(true);
+  };
+  
+  // Handle delete button click
+  const handleDeleteClick = (id: number) => {
+    setCustomerToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleAddClick = () => {
+    setEditingCustomer(null);
+    setAddModalOpen(true);
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (customerToDelete) {
+      deleteCustomerMutation.mutate(customerToDelete);
+    }
+  };
+  
+  // Use demo data if API returns empty
+  const useDemo = !isLoading && Array.isArray(customersData) && customersData.length === 0 && !searchQuery;
+  
+  // Demo Customers for empty state
+  const demoCustomers: Customer[] = [
     {
       id: 1,
       name: "Alice Richardson",
@@ -89,11 +174,13 @@ export default function CustomersPage() {
     }
   ];
   
+  const customers = useDemo ? demoCustomers : customersData;
+  
   const filteredCustomers = customers
     .filter((customer) => 
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
+      customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .filter((customer) => {
       if (activeTab === "all") return true;
@@ -111,7 +198,7 @@ export default function CustomersPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button>
+          <Button onClick={handleAddClick}>
             <Plus className="h-4 w-4 mr-2" />
             Add Customer
           </Button>
