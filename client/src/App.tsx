@@ -10,14 +10,36 @@ import ClientManagement from "@/pages/ClientManagement";
 import Settings from "@/pages/Settings";
 import Reports from "@/pages/Reports";
 
+// Placeholder components for new pages
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h2 className="text-2xl font-medium text-text-primary">{title}</h2>
+    </div>
+    <p>This page is under development. Coming soon!</p>
+  </div>
+);
+
+const CompaniesPage = () => <PlaceholderPage title="Companies" />;
+const OEMsPage = () => <PlaceholderPage title="OEMs" />;
+const CustomersPage = () => <PlaceholderPage title="Customers" />;
+const UserManagementPage = () => <PlaceholderPage title="User Management" />;
+const LeadsPage = () => <PlaceholderPage title="Leads" />;
+const DocumentManagementPage = () => <PlaceholderPage title="Document Management" />;
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/tenders" component={TenderManagement} />
-      <Route path="/clients" component={ClientManagement} />
-      <Route path="/settings" component={Settings} />
+      <Route path="/companies" component={CompaniesPage} />
+      <Route path="/oems" component={OEMsPage} />
+      <Route path="/customers" component={CustomersPage} />
+      <Route path="/user-management" component={UserManagementPage} />
+      <Route path="/leads" component={LeadsPage} />
+      <Route path="/document-management" component={DocumentManagementPage} />
+      <Route path="/tender-management" component={TenderManagement} />
       <Route path="/reports" component={Reports} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
