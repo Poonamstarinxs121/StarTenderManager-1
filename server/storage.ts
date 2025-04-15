@@ -1,0 +1,272 @@
+import { users, clients, tenders, documents, activities } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, like, gte, lte, sql } from "drizzle-orm";
+import type {
+  User,
+  InsertUser,
+  Client,
+  InsertClient,
+  Tender,
+  InsertTender,
+  Document,
+  InsertDocument,
+  Activity,
+  InsertActivity
+} from "@shared/schema";
+
+// Storage interface for the application
+export interface IStorage {
+  // User methods
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  // Client methods
+  getClient(id: number): Promise<Client | undefined>;
+  getClients(): Promise<Client[]>;
+  createClient(client: InsertClient): Promise<Client>;
+  updateClient(id: number, client: Partial<InsertClient>): Promise<Client | undefined>;
+  deleteClient(id: number): Promise<boolean>;
+  
+  // Tender methods
+  getTender(id: number): Promise<Tender | undefined>;
+  getTenderByReference(reference: string): Promise<Tender | undefined>;
+  getTenders(filters?: {
+    status?: string;
+    clientId?: number;
+    startDate?: Date;
+    endDate?: Date;
+    search?: string;
+  }, page?: number, limit?: number): Promise<{ tenders: Tender[], total: number }>;
+  createTender(tender: InsertTender): Promise<Tender>;
+  updateTender(id: number, tender: Partial<InsertTender>): Promise<Tender | undefined>;
+  deleteTender(id: number): Promise<boolean>;
+  
+  // Document methods
+  getDocumentsByTenderId(tenderId: number): Promise<Document[]>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  deleteDocument(id: number): Promise<boolean>;
+  
+  // Activity methods
+  getRecentActivities(limit?: number): Promise<Activity[]>;
+  createActivity(activity: InsertActivity): Promise<Activity>;
+}
+
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+  
+  // Client methods
+  async getClient(id: number): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client;
+  }
+  
+  async getClients(): Promise<Client[]> {
+    return await db.select().from(clients);
+  }
+  
+  async createClient(client: InsertClient): Promise<Client> {
+    const [newClient] = await db.insert(clients).values(client).returning();
+    return newClient;
+  }
+  
+  async updateClient(id: number, client: Partial<InsertClient>): Promise<Client | undefined> {
+    const [updatedClient] = await db
+      .update(clients)
+      .set(client)
+      .where(eq(clients.id, id))
+      .returning();
+    return updatedClient;
+  }
+  
+  async deleteClient(id: number): Promise<boolean> {
+    const result = await db.delete(clients).where(eq(clients.id, id));
+    return true; // If we got here, the delete was successful
+  }
+  
+  // Tender methods
+  async getTender(id: number): Promise<Tender | undefined> {
+    const [tender] = await db.select().from(tenders).where(eq(tenders.id, id));
+    return tender;
+  }
+  
+  async getTenderByReference(reference: string): Promise<Tender | undefined> {
+    const [tender] = await db.select().from(tenders).where(eq(tenders.referenceNumber, reference));
+    return tender;
+  }
+  
+  async getTenders(
+    filters?: {
+      status?: string;
+      clientId?: number;
+      startDate?: Date;
+      endDate?: Date;
+      search?: string;
+    },
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ tenders: Tender[], total: number }> {
+    const offset = (page - 1) * limit;
+    
+    // Build query conditions
+    let conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(tenders.status, filters.status));
+    }
+    
+    if (filters?.clientId) {
+      conditions.push(eq(tenders.clientId, filters.clientId));
+    }
+    
+    if (filters?.startDate) {
+      conditions.push(sql`${tenders.publishDate}::timestamp >= ${filters.startDate}::timestamp`);
+    }
+    
+    if (filters?.endDate) {
+      conditions.push(sql`${tenders.publishDate}::timestamp <= ${filters.endDate}::timestamp`);
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        sql`(${tenders.title} ILIKE ${searchTerm} OR ${tenders.referenceNumber} ILIKE ${searchTerm})`
+      );
+    }
+    
+    // Create the where clause
+    const whereClause = conditions.length > 0 
+      ? and(...conditions)
+      : undefined;
+    
+    // Get total count for pagination
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tenders)
+      .where(whereClause || sql`TRUE`);
+    
+    // Get tenders with pagination
+    const result = await db
+      .select()
+      .from(tenders)
+      .where(whereClause || sql`TRUE`)
+      .orderBy(desc(tenders.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return { 
+      tenders: result,
+      total: Number(count)
+    };
+  }
+  
+  async createTender(tender: InsertTender): Promise<Tender> {
+    const [newTender] = await db.insert(tenders).values(tender).returning();
+    
+    // Add activity log
+    await this.createActivity({
+      tenderId: newTender.id,
+      activityType: 'create',
+      description: `New tender added: ${newTender.title}`,
+      userId: newTender.createdBy || 1,
+    });
+    
+    return newTender;
+  }
+  
+  async updateTender(id: number, tender: Partial<InsertTender>): Promise<Tender | undefined> {
+    const [updatedTender] = await db
+      .update(tenders)
+      .set({
+        ...tender,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenders.id, id))
+      .returning();
+      
+    if (updatedTender) {
+      // Add activity log
+      await this.createActivity({
+        tenderId: updatedTender.id,
+        activityType: 'update',
+        description: `Tender updated: ${updatedTender.title}`,
+        userId: tender.createdBy || 1,
+      });
+    }
+    
+    return updatedTender;
+  }
+  
+  async deleteTender(id: number): Promise<boolean> {
+    // Get tender before deleting for activity log
+    const [tender] = await db.select().from(tenders).where(eq(tenders.id, id));
+    
+    if (tender) {
+      // Delete associated documents first
+      await db.delete(documents).where(eq(documents.tenderId, id));
+      
+      // Delete the tender
+      await db.delete(tenders).where(eq(tenders.id, id));
+      
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'delete',
+        description: `Tender deleted: ${tender.title} (${tender.referenceNumber})`,
+        userId: tender.createdBy || 1,
+      });
+      
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Document methods
+  async getDocumentsByTenderId(tenderId: number): Promise<Document[]> {
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.tenderId, tenderId));
+  }
+  
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [newDocument] = await db.insert(documents).values(document).returning();
+    return newDocument;
+  }
+  
+  async deleteDocument(id: number): Promise<boolean> {
+    await db.delete(documents).where(eq(documents.id, id));
+    return true;
+  }
+  
+  // Activity methods
+  async getRecentActivities(limit: number = 5): Promise<Activity[]> {
+    return await db
+      .select()
+      .from(activities)
+      .orderBy(desc(activities.timestamp))
+      .limit(limit);
+  }
+  
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    const [newActivity] = await db.insert(activities).values(activity).returning();
+    return newActivity;
+  }
+}
+
+export const storage = new DatabaseStorage();
