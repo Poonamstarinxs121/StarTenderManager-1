@@ -10,8 +10,8 @@ import {
   Eye, 
   File, 
   FileText, 
-  FilePdf, 
-  FileImage,
+  FileIcon, 
+  Image,
   FileSpreadsheet,
   MoreVertical 
 } from "lucide-react";
@@ -112,12 +112,12 @@ export default function DocumentManagementPage() {
   
   const getFileIcon = (type: string) => {
     switch(type) {
-      case "pdf": return <FilePdf className="h-8 w-8 text-red-500" />;
+      case "pdf": return <FileIcon className="h-8 w-8 text-red-500" />;
       case "docx": return <FileText className="h-8 w-8 text-blue-500" />;
       case "xlsx": return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
       case "jpg": 
       case "png": 
-      case "gif": return <FileImage className="h-8 w-8 text-purple-500" />;
+      case "gif": return <Image className="h-8 w-8 text-purple-500" />;
       default: return <File className="h-8 w-8 text-gray-500" />;
     }
   };
