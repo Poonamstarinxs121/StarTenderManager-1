@@ -9,6 +9,10 @@ import TenderManagement from "@/pages/TenderManagement";
 import ClientManagement from "@/pages/ClientManagement";
 import Settings from "@/pages/Settings";
 import Reports from "@/pages/Reports";
+import CompaniesPage from "@/pages/CompaniesPage";
+import OEMsPage from "@/pages/OEMsPage";
+import CustomersPage from "@/pages/CustomersPage";
+import LeadsPage from "@/pages/LeadsPage";
 
 // Placeholder components for new pages
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -20,11 +24,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
   </div>
 );
 
-const CompaniesPage = () => <PlaceholderPage title="Companies" />;
-const OEMsPage = () => <PlaceholderPage title="OEMs" />;
-const CustomersPage = () => <PlaceholderPage title="Customers" />;
 const UserManagementPage = () => <PlaceholderPage title="User Management" />;
-const LeadsPage = () => <PlaceholderPage title="Leads" />;
 const DocumentManagementPage = () => <PlaceholderPage title="Document Management" />;
 
 function Router() {

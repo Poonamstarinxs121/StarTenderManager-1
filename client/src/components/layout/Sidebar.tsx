@@ -75,7 +75,7 @@ export default function Sidebar() {
             return (
               <li key={item.href}>
                 <Link href={item.href}>
-                  <a
+                  <div
                     className={`flex items-center px-4 py-2.5 transition-colors
                       ${isActive 
                         ? "bg-gray-100 text-black font-medium" 
@@ -83,7 +83,7 @@ export default function Sidebar() {
                   >
                     <span className="h-5 w-5">{item.icon}</span>
                     <span className="ml-4 text-sm hidden md:inline">{item.label}</span>
-                  </a>
+                  </div>
                 </Link>
               </li>
             );
