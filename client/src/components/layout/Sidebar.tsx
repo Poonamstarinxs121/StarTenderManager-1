@@ -67,7 +67,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="bg-white border-r border-gray-200 sidebar w-16 md:w-64 flex flex-col">
+    <aside className="bg-white border-r border-gray-200 sidebar w-64 flex flex-col">
       <nav className="py-4 flex-1">
         <ul className="space-y-1">
           {navItems.map((item) => {
@@ -81,8 +81,8 @@ export default function Sidebar() {
                         ? "bg-gray-100 text-black font-medium" 
                         : "text-gray-600 hover:bg-gray-50 hover:text-black"}`}
                   >
-                    <span className="h-5 w-5">{item.icon}</span>
-                    <span className="ml-4 text-sm hidden md:inline">{item.label}</span>
+                    <span className="h-5 w-5 flex-shrink-0">{item.icon}</span>
+                    <span className="ml-3 text-sm">{item.label}</span>
                   </div>
                 </Link>
               </li>
@@ -94,7 +94,7 @@ export default function Sidebar() {
       <div className="px-4 py-3 border-t border-gray-200">
         <div className="flex items-center">
           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          <span className="ml-2 text-xs text-gray-500 hidden md:inline">Database connected</span>
+          <span className="ml-2 text-xs text-gray-500">Database connected</span>
         </div>
       </div>
     </aside>
