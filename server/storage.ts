@@ -1,6 +1,6 @@
-import { users, clients, tenders, documents, activities } from "@shared/schema";
+import { users, clients, tenders, documents, activities, roles } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, like, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, like, gte, lte, sql, count } from "drizzle-orm";
 import type {
   User,
   InsertUser,
@@ -11,7 +11,9 @@ import type {
   Document,
   InsertDocument,
   Activity,
-  InsertActivity
+  InsertActivity,
+  Role,
+  InsertRole
 } from "@shared/schema";
 
 // Storage interface for the application
@@ -84,9 +86,58 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        ...user,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
   async deleteUser(id: number): Promise<boolean> {
-    const result = await db.delete(users).where(eq(users.id, id));
-    return result.rowsAffected > 0;
+    await db.delete(users).where(eq(users.id, id));
+    return true;
+  }
+
+  // Role methods
+  async getRole(id: number): Promise<Role | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    return role;
+  }
+
+  async getRoles(): Promise<Role[]> {
+    return await db.select().from(roles);
+  }
+
+  async createRole(role: InsertRole): Promise<Role> {
+    const [newRole] = await db.insert(roles).values(role).returning();
+    return newRole;
+  }
+
+  async updateRole(id: number, role: Partial<InsertRole>): Promise<Role | undefined> {
+    const [updatedRole] = await db
+      .update(roles)
+      .set(role)
+      .where(eq(roles.id, id))
+      .returning();
+    return updatedRole;
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    await db.delete(roles).where(eq(roles.id, id));
+    return true;
+  }
+
+  async getUsersCountByRoleId(roleId: number): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(eq(users.roleId, roleId));
+    return Number(result.count);
   }
 
   // Client methods
@@ -114,8 +165,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteClient(id: number): Promise<boolean> {
-    const result = await db.delete(clients).where(eq(clients.id, id));
-    return result.rowsAffected > 0;
+    await db.delete(clients).where(eq(clients.id, id));
+    return true;
   }
 
   // Tender methods
@@ -270,8 +321,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDocument(id: number): Promise<boolean> {
-    const result = await db.delete(documents).where(eq(documents.id, id));
-    return result.rowsAffected > 0;
+    await db.delete(documents).where(eq(documents.id, id));
+    return true;
   }
 
   // Activity methods

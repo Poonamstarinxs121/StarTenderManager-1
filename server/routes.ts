@@ -1,7 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertTenderSchema, insertClientSchema, insertDocumentSchema, insertActivitySchema } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  insertTenderSchema, 
+  insertClientSchema, 
+  insertDocumentSchema, 
+  insertActivitySchema,
+  insertRoleSchema
+} from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 
@@ -319,6 +326,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).end();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // ROLE ROUTES
+  app.get("/api/roles", async (req, res) => {
+    try {
+      const roles = await storage.getRoles();
+      
+      // For each role, get the count of users
+      const rolesWithCounts = await Promise.all(
+        roles.map(async (role) => {
+          const usersCount = await storage.getUsersCountByRoleId(role.id);
+          return {
+            ...role,
+            usersCount
+          };
+        })
+      );
+      
+      res.json(rolesWithCounts);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      res.status(500).json({ message: "Failed to retrieve roles" });
+    }
+  });
+
+  app.get("/api/roles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid role ID" });
+      }
+
+      const role = await storage.getRole(id);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      const usersCount = await storage.getUsersCountByRoleId(id);
+      res.json({ ...role, usersCount });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve role" });
+    }
+  });
+
+  app.post("/api/roles", validateBody(insertRoleSchema), async (req, res) => {
+    try {
+      const newRole = await storage.createRole(req.body);
+      res.status(201).json(newRole);
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Failed to create role" });
+    }
+  });
+
+  app.put("/api/roles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid role ID" });
+      }
+
+      const updatedRole = await storage.updateRole(id, req.body);
+      if (!updatedRole) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.json(updatedRole);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete("/api/roles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid role ID" });
+      }
+
+      // Check if there are users with this role
+      const usersCount = await storage.getUsersCountByRoleId(id);
+      if (usersCount > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete role that has assigned users",
+          usersCount
+        });
+      }
+
+      const success = await storage.deleteRole(id);
+      if (!success) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ message: "Failed to delete role" });
     }
   });
 
