@@ -322,29 +322,65 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
         <TabsContent value="document-upload">
           <Card>
             <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="border border-dashed border-gray-300 rounded-md p-10 text-center">
-                  <CloudUpload className="h-12 w-12 mx-auto text-gray-400" />
-                  <p className="text-sm text-gray-500 mt-4">
-                    Drag and drop files here or click to browse
-                  </p>
-                  <Button type="button" variant="outline" size="sm" className="mt-4">
-                    Browse Files
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-4">
-                    Supported formats: PDF, DOCX, XLSX, JPG, PNG (Max 10MB per file)
-                  </p>
-                </div>
+              <Form {...form}>
+                <form className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <FormField
+                      control={form.control}
+                      name="participatingCompany"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Participating Company</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a company" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Array.isArray(companies) && companies.length > 0 ? (
+                                companies.map((company: any) => (
+                                  <SelectItem key={company.id} value={company.name}>
+                                    {company.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="no-companies">No companies available</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 
-                <div className="flex justify-between gap-2">
-                  <Button type="button" variant="outline" onClick={goToPreviousTab}>
-                    Back
-                  </Button>
-                  <Button type="button" onClick={goToNextTab}>
-                    Next
-                  </Button>
-                </div>
-              </div>
+                  <div className="border border-dashed border-gray-300 rounded-md p-10 text-center">
+                    <CloudUpload className="h-12 w-12 mx-auto text-gray-400" />
+                    <p className="text-sm text-gray-500 mt-4">
+                      Drag and drop files here or click to browse
+                    </p>
+                    <Button type="button" variant="outline" size="sm" className="mt-4">
+                      Browse Files
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-4">
+                      Supported formats: PDF, DOCX, XLSX, JPG, PNG (Max 10MB per file)
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-between gap-2">
+                    <Button type="button" variant="outline" onClick={goToPreviousTab}>
+                      Back
+                    </Button>
+                    <Button type="button" onClick={goToNextTab}>
+                      Next
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </TabsContent>
