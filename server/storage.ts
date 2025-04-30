@@ -1,11 +1,13 @@
-import { users, clients, tenders, documents, activities, roles, companies } from "@shared/schema";
+import { users, clients, tenders, documents, activities, roles, companies, customers } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, like, gte, lte, sql, count } from "drizzle-orm";
+import { eq, and, desc, like, gte, lte, sql, count, or } from "drizzle-orm";
 import type {
   User,
   InsertUser,
   Client,
   InsertClient,
+  Customer,
+  InsertCustomer,
   Tender,
   InsertTender,
   Document,
@@ -183,6 +185,104 @@ export class DatabaseStorage implements IStorage {
   async deleteCompany(id: number): Promise<boolean> {
     await db.delete(companies).where(eq(companies.id, id));
     return true;
+  }
+
+  // Customer methods
+  async getCustomer(id: number): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+    return customer;
+  }
+
+  async getCustomers(filters?: { status?: string, type?: string, search?: string }): Promise<Customer[]> {
+    let query = db.select().from(customers);
+    
+    const conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(customers.status, filters.status));
+    }
+    
+    if (filters?.type) {
+      conditions.push(eq(customers.type, filters.type));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(customers.name, searchTerm),
+          like(customers.email, searchTerm),
+          like(customers.company, searchTerm)
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(customers.createdAt));
+  }
+
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    const [newCustomer] = await db.insert(customers).values({
+      ...customer,
+      updatedAt: new Date()
+    }).returning();
+    
+    // Add activity log
+    await this.createActivity({
+      tenderId: null,
+      activityType: 'create',
+      description: `New customer added: ${newCustomer.name}`,
+      userId: 1, // Default to admin user if no user provided
+    });
+    
+    return newCustomer;
+  }
+
+  async updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer | undefined> {
+    const [updatedCustomer] = await db
+      .update(customers)
+      .set({
+        ...customer,
+        updatedAt: new Date()
+      })
+      .where(eq(customers.id, id))
+      .returning();
+    
+    if (updatedCustomer) {
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'update',
+        description: `Customer updated: ${updatedCustomer.name}`,
+        userId: 1, // Default to admin user if no user provided
+      });
+    }
+    
+    return updatedCustomer;
+  }
+
+  async deleteCustomer(id: number): Promise<boolean> {
+    // Get customer before deleting for activity log
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+    
+    if (customer) {
+      await db.delete(customers).where(eq(customers.id, id));
+      
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'delete',
+        description: `Customer deleted: ${customer.name}`,
+        userId: 1, // Default to admin user if no user provided
+      });
+      
+      return true;
+    }
+    
+    return false;
   }
 
   // Client methods

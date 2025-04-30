@@ -8,7 +8,8 @@ import {
   insertDocumentSchema, 
   insertActivitySchema,
   insertRoleSchema,
-  insertCompanySchema
+  insertCompanySchema,
+  insertCustomerSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -500,6 +501,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).end();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete company" });
+    }
+  });
+
+  // CUSTOMER ROUTES
+  app.get("/api/customers", async (req, res) => {
+    try {
+      const { status, type, search } = req.query;
+      const filters: { status?: string, type?: string, search?: string } = {};
+      
+      if (status && typeof status === 'string') {
+        filters.status = status;
+      }
+      
+      if (type && typeof type === 'string') {
+        filters.type = type;
+      }
+      
+      if (search && typeof search === 'string') {
+        filters.search = search;
+      }
+      
+      const customers = await storage.getCustomers(filters);
+      res.status(200).json(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      res.status(500).json({ message: "Failed to fetch customers" });
+    }
+  });
+  
+  app.get("/api/customers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid customer ID" });
+      }
+      
+      const customer = await storage.getCustomer(id);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      res.status(200).json(customer);
+    } catch (error) {
+      console.error("Error fetching customer:", error);
+      res.status(500).json({ message: "Failed to fetch customer" });
+    }
+  });
+  
+  app.post("/api/customers", validateBody(insertCustomerSchema), async (req, res) => {
+    try {
+      const newCustomer = await storage.createCustomer(req.body);
+      res.status(201).json(newCustomer);
+    } catch (error) {
+      console.error("Error creating customer:", error);
+      res.status(500).json({ message: "Failed to create customer" });
+    }
+  });
+  
+  app.put("/api/customers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid customer ID" });
+      }
+      
+      const customer = await storage.updateCustomer(id, req.body);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      res.status(200).json(customer);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      res.status(500).json({ message: "Failed to update customer" });
+    }
+  });
+  
+  app.delete("/api/customers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid customer ID" });
+      }
+      
+      const success = await storage.deleteCustomer(id);
+      if (!success) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).json({ message: "Failed to delete customer" });
     }
   });
 
