@@ -43,6 +43,13 @@ export interface IStorage {
   updateCompany(id: number, company: Partial<InsertCompany>): Promise<Company | undefined>;
   deleteCompany(id: number): Promise<boolean>;
 
+  // Customer methods
+  getCustomer(id: number): Promise<Customer | undefined>;
+  getCustomers(filters?: { status?: string, type?: string, search?: string }): Promise<Customer[]>;
+  createCustomer(customer: InsertCustomer): Promise<Customer>;
+  updateCustomer(id: number, customer: Partial<InsertCustomer>): Promise<Customer | undefined>;
+  deleteCustomer(id: number): Promise<boolean>;
+
   // Client methods
   getClient(id: number): Promise<Client | undefined>;
   getClients(): Promise<Client[]>;

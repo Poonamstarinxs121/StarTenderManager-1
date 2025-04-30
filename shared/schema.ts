@@ -64,9 +64,31 @@ export const clients = pgTable("clients", {
   address: text("address"),
 });
 
+export const customers = pgTable("customers", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  company: text("company"),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  country: text("country"),
+  type: text("type"), // Regular, VIP, etc.
+  source: text("source"), // Where the customer came from
+  status: text("status").default("active"),
+  lastContact: timestamp("last_contact"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const clientsRelations = relations(clients, ({ many }) => ({
   tenders: many(tenders),
 }));
+
+export const customersRelations = relations(customers, ({}) => ({}));
 
 export const tenders = pgTable("tenders", {
   id: serial("id").primaryKey(),
@@ -147,6 +169,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, createdAt: true });
 export const insertCompanySchema = createInsertSchema(companies).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
+export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, timestamp: true });
@@ -156,6 +179,7 @@ export type User = typeof users.$inferSelect;
 export type Role = typeof roles.$inferSelect;
 export type Company = typeof companies.$inferSelect;
 export type Client = typeof clients.$inferSelect;
+export type Customer = typeof customers.$inferSelect;
 export type Tender = typeof tenders.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
@@ -165,6 +189,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertRole = z.infer<typeof insertRoleSchema>;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type InsertTender = z.infer<typeof insertTenderSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
