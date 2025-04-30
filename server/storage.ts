@@ -1,4 +1,4 @@
-import { users, clients, tenders, documents, activities, roles } from "@shared/schema";
+import { users, clients, tenders, documents, activities, roles, companies } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, like, gte, lte, sql, count } from "drizzle-orm";
 import type {
@@ -13,7 +13,9 @@ import type {
   Activity,
   InsertActivity,
   Role,
-  InsertRole
+  InsertRole,
+  Company,
+  InsertCompany
 } from "@shared/schema";
 
 // Storage interface for the application

@@ -36,6 +36,21 @@ export const rolesRelations = relations(roles, ({ many }) => ({
   users: many(users),
 }));
 
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  contactPerson: text("contact_person"),
+  email: text("email"),
+  phone: text("phone"),
+  location: text("location"),
+  status: text("status").default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  tenders: many(tenders),
+}));
+
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),
@@ -54,6 +69,7 @@ export const tenders = pgTable("tenders", {
   referenceNumber: varchar("reference_number", { length: 20 }).notNull().unique(),
   title: text("title").notNull(),
   clientId: integer("client_id").references(() => clients.id),
+  companyId: integer("company_id").references(() => companies.id),
   department: text("department"),
   publishDate: date("publish_date").notNull(),
   dueDate: date("due_date").notNull(),
@@ -69,6 +85,10 @@ export const tendersRelations = relations(tenders, ({ one }) => ({
   client: one(clients, {
     fields: [tenders.clientId],
     references: [clients.id],
+  }),
+  company: one(companies, {
+    fields: [tenders.companyId],
+    references: [companies.id],
   }),
   creator: one(users, {
     fields: [tenders.createdBy],
@@ -121,6 +141,7 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, lastLogin: true });
 export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, createdAt: true });
+export const insertCompanySchema = createInsertSchema(companies).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
@@ -129,6 +150,7 @@ export const insertActivitySchema = createInsertSchema(activities).omit({ id: tr
 // Select types
 export type User = typeof users.$inferSelect;
 export type Role = typeof roles.$inferSelect;
+export type Company = typeof companies.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Tender = typeof tenders.$inferSelect;
 export type Document = typeof documents.$inferSelect;
@@ -137,6 +159,7 @@ export type Activity = typeof activities.$inferSelect;
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type InsertTender = z.infer<typeof insertTenderSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
