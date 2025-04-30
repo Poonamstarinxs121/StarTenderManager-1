@@ -14,8 +14,9 @@ import OEMsPage from "@/pages/OEMsPage";
 import CustomersPage from "@/pages/CustomersPage";
 import LeadsPage from "@/pages/LeadsPage";
 import DocumentManagementPage from "@/pages/DocumentManagementPage";
+import UserManagementPage from "@/pages/UserManagementPage";
 
-// Placeholder component for user management (will be implemented later)
+// Placeholder component for pages under development
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="space-y-6">
     <div className="flex justify-between items-center">
@@ -24,9 +25,6 @@ const PlaceholderPage = ({ title }: { title: string }) => (
     <p>This page is under development. Coming soon!</p>
   </div>
 );
-
-// Only user management is left as a placeholder
-const UserManagementPage = () => <PlaceholderPage title="User Management" />;
 
 function Router() {
   return (

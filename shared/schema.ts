@@ -3,13 +3,38 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   name: text("name").notNull(),
+  email: text("email"),
   role: text("role").notNull().default("user"),
+  roleId: integer("role_id").references(() => roles.id),
+  department: text("department"),
+  status: text("status").default("active"),
+  lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const usersRelations = relations(users, ({ one }) => ({
+  userRole: one(roles, {
+    fields: [users.roleId],
+    references: [roles.id],
+  }),
+}));
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  users: many(users),
+}));
 
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
@@ -94,7 +119,8 @@ export const activitiesRelations = relations(activities, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true, lastLogin: true });
+export const insertRoleSchema = createInsertSchema(roles).omit({ id: true, createdAt: true });
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true });
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
@@ -102,6 +128,7 @@ export const insertActivitySchema = createInsertSchema(activities).omit({ id: tr
 
 // Select types
 export type User = typeof users.$inferSelect;
+export type Role = typeof roles.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Tender = typeof tenders.$inferSelect;
 export type Document = typeof documents.$inferSelect;
@@ -109,6 +136,7 @@ export type Activity = typeof activities.$inferSelect;
 
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type InsertTender = z.infer<typeof insertTenderSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;

@@ -326,7 +326,7 @@ export default function RoleModal({
                             size="sm"
                             onClick={() => handleDeleteRoleClick(role.id)}
                             className="text-red-500"
-                            disabled={role.usersCount && role.usersCount > 0}
+                            disabled={role.usersCount !== undefined && role.usersCount > 0}
                           >
                             <Trash className="h-4 w-4" />
                             <span className="sr-only">Delete</span>

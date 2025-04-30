@@ -21,7 +21,16 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
+
+  // Role methods
+  getRole(id: number): Promise<Role | undefined>;
+  getRoles(): Promise<Role[]>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: number, role: Partial<InsertRole>): Promise<Role | undefined>;
+  deleteRole(id: number): Promise<boolean>;
+  getUsersCountByRoleId(roleId: number): Promise<number>;
 
   // Client methods
   getClient(id: number): Promise<Client | undefined>;
