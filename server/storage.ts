@@ -366,8 +366,34 @@ export class DatabaseStorage implements IStorage {
   // Activity methods
   async getRecentActivities(limit: number = 5): Promise<Activity[]> {
     return await db
+      .select({
+        ...activities,
+        userName: users.name,
+      })
+      .from(activities)
+      .leftJoin(users, eq(activities.userId, users.id))
+      .orderBy(desc(activities.timestamp))
+      .limit(limit);
+  }
+  
+  async getActivitiesByUser(userId: number, limit: number = 10): Promise<Activity[]> {
+    return await db
       .select()
       .from(activities)
+      .where(eq(activities.userId, userId))
+      .orderBy(desc(activities.timestamp))
+      .limit(limit);
+  }
+  
+  async getActivitiesByTender(tenderId: number, limit: number = 20): Promise<Activity[]> {
+    return await db
+      .select({
+        ...activities,
+        userName: users.name,
+      })
+      .from(activities)
+      .leftJoin(users, eq(activities.userId, users.id))
+      .where(eq(activities.tenderId, tenderId))
       .orderBy(desc(activities.timestamp))
       .limit(limit);
   }

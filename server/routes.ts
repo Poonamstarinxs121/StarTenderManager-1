@@ -513,6 +513,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to retrieve activities" });
     }
   });
+  
+  app.post("/api/activities", validateBody(insertActivitySchema), async (req, res) => {
+    try {
+      const newActivity = await storage.createActivity(req.body);
+      res.status(201).json(newActivity);
+    } catch (error) {
+      console.error("Error creating activity:", error);
+      res.status(500).json({ message: "Failed to log activity" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
