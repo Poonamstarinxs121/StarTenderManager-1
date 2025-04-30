@@ -3,14 +3,16 @@ import FilterSection from "@/components/tenders/FilterSection";
 import TenderTable from "@/components/tenders/TenderTable";
 import AddTenderModal from "@/components/tenders/AddTenderModal";
 import ViewTenderModal from "@/components/tenders/ViewTenderModal";
+import NewTenderProcess from "@/components/tenders/NewTenderProcess";
 import RecentActivity from "@/components/activity/RecentActivity";
 import { useQuery } from "@tanstack/react-query";
 import { Tender } from "@/types";
 
 export default function TenderManagement() {
-  // Modal states
+  // UI states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [showNewTenderProcess, setShowNewTenderProcess] = useState(false);
   const [currentTenderId, setCurrentTenderId] = useState<number | null>(null);
   
   // Filter states
@@ -51,7 +53,11 @@ export default function TenderManagement() {
   });
 
   // Handlers
-  const handleOpenAddModal = () => setIsAddModalOpen(true);
+  const handleOpenAddModal = () => {
+    setIsAddModalOpen(true);
+    setShowNewTenderProcess(false);
+  };
+  
   const handleCloseAddModal = () => setIsAddModalOpen(false);
   
   const handleViewTender = (id: number) => {
@@ -94,14 +100,37 @@ export default function TenderManagement() {
     setLimit(newLimit);
     setPage(1); // Reset to first page when limit changes
   };
+  
+  const handleOpenNewTenderProcess = () => {
+    setShowNewTenderProcess(true);
+  };
+  
+  const handleCloseNewTenderProcess = () => {
+    setShowNewTenderProcess(false);
+  };
+
+  if (showNewTenderProcess) {
+    return (
+      <NewTenderProcess
+        onCancel={handleCloseNewTenderProcess}
+        onSuccess={() => {
+          refetch();
+          setShowNewTenderProcess(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-medium text-text-primary">Tender Management</h2>
+        <div>
+          <h2 className="text-2xl font-medium text-text-primary">Tender Management</h2>
+          <p className="text-muted-foreground text-sm">Create and manage tender documentation</p>
+        </div>
         <button
           className="bg-primary text-white px-4 py-2 rounded-md flex items-center"
-          onClick={handleOpenAddModal}
+          onClick={handleOpenNewTenderProcess}
         >
           <span className="mr-1">+</span>
           <span>Add New Tender</span>
