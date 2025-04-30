@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, CloudUpload } from "lucide-react";
+import { Loader2, CloudUpload, Plus, Tag, Upload } from "lucide-react";
 import { format } from "date-fns";
 
 // Extend the schema with validation
@@ -44,6 +44,10 @@ const formSchema = insertTenderSchema.extend({
   deliveryLocation: z.string().optional(),
   tenderId: z.string().optional(),
   participatingCompany: z.string().optional(),
+  // Document upload fields
+  documentSetLead: z.string().optional(),
+  documentSetName: z.string().optional(),
+  documentTags: z.string().optional(),
 });
 
 type TenderFormValues = z.infer<typeof formSchema>;
@@ -88,10 +92,32 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
     },
   });
   
+  // Get current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/users/current'],
+  });
+  
   // Add tender mutation
   const mutation = useMutation({
     mutationFn: async (data: TenderFormValues) => {
-      return apiRequest("/api/tenders", "POST", data);
+      const response = await apiRequest("/api/tenders", "POST", data);
+      
+      // Log activity
+      if (currentUser && currentUser.id) {
+        try {
+          await apiRequest("/api/activities", "POST", {
+            activityType: "create",
+            description: `Created new tender: ${data.title || 'Untitled'}`,
+            userId: currentUser.id,
+            tenderId: response.id
+          });
+        } catch (error) {
+          console.error("Failed to log activity:", error);
+          // Don't throw - we still want the tender to be created
+        }
+      }
+      
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -99,6 +125,7 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
         description: "Tender created successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/tenders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/activities/recent'] }); 
       onSuccess();
     },
     onError: (error: any) => {
@@ -357,21 +384,117 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
                       )}
                     />
                   </div>
-                
-                  <div className="border border-dashed border-gray-300 rounded-md p-10 text-center">
-                    <CloudUpload className="h-12 w-12 mx-auto text-gray-400" />
-                    <p className="text-sm text-gray-500 mt-4">
-                      Drag and drop files here or click to browse
-                    </p>
-                    <Button type="button" variant="outline" size="sm" className="mt-4">
-                      Browse Files
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-4">
-                      Supported formats: PDF, DOCX, XLSX, JPG, PNG (Max 10MB per file)
-                    </p>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-medium">Document Set Details</h3>
+                      <Button type="button" variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" /> Add More Sets
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="documentSetLead"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm">
+                                Select Lead <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a lead" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="lead-1">Lead 1</SelectItem>
+                                  <SelectItem value="lead-2">Lead 2</SelectItem>
+                                  <SelectItem value="lead-3">Lead 3</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="documentSetName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm">
+                                Document Set Name <span className="text-red-500">*</span>
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter document set name" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="documentTags"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">Document Tags</FormLabel>
+                            <FormControl>
+                              <div className="flex items-center space-x-2 border rounded-md px-3 py-2">
+                                <Tag className="h-4 w-4 text-gray-400" />
+                                <Input 
+                                  placeholder="Type tag and press Enter" 
+                                  className="border-0 p-0 focus-visible:ring-0 focus-visible:ring-offset-0" 
+                                  {...field} 
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    <div className="mt-8 border border-gray-200 rounded-md p-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-md font-medium">Upload Documents</h4>
+                        <Button type="button" variant="outline" size="sm">
+                          <Upload className="h-4 w-4 mr-2" /> Upload Files
+                        </Button>
+                      </div>
+                      
+                      <div className="border border-dashed border-gray-300 rounded-md p-10 text-center">
+                        <CloudUpload className="h-12 w-12 mx-auto text-gray-400" />
+                        <p className="text-sm text-gray-500 mt-4">
+                          Drag and drop files here or click to browse
+                        </p>
+                        <Button type="button" variant="outline" size="sm" className="mt-4">
+                          Browse Files
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-4">
+                          Supported formats: PDF, DOCX, XLSX, JPG, PNG (Max 10MB per file)
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button type="button" variant="default" className="ml-auto">
+                        Save Document Set
+                      </Button>
+                    </div>
                   </div>
                   
-                  <div className="flex justify-between gap-2">
+                  <div className="flex justify-between gap-2 mt-8">
                     <Button type="button" variant="outline" onClick={goToPreviousTab}>
                       Back
                     </Button>

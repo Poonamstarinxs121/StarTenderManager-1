@@ -1,103 +1,95 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Activity } from "@shared/schema";
 import { 
-  FileText, 
-  Edit, 
-  CheckCircle, 
   Clock, 
-  Loader2,
+  FileText, 
+  User, 
+  Plus, 
+  Edit, 
+  Trash, 
+  Activity as ActivityIcon,
+  CheckCircle,
   AlertCircle
 } from "lucide-react";
+import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function RecentActivity() {
-  const { data: activities, isLoading, error } = useQuery({
+  const isMobile = useIsMobile();
+  
+  const { data: activities, isLoading } = useQuery({
     queryKey: ['/api/activities/recent'],
   });
-  
-  // Helper to get icon for activity type
-  const getActivityIcon = (type: string) => {
-    switch (type) {
+
+  function getActivityIcon(activityType: string) {
+    switch (activityType) {
       case 'create':
-        return <FileText className="h-5 w-5 text-primary" />;
+        return <Plus className="h-4 w-4 text-green-500" />;
       case 'update':
-        return <Edit className="h-5 w-5 text-secondary" />;
+        return <Edit className="h-4 w-4 text-blue-500" />;
       case 'delete':
-        return <AlertCircle className="h-5 w-5 text-destructive" />;
-      case 'status_change':
-        return <CheckCircle className="h-5 w-5 text-success" />;
-      case 'due_date_change':
-        return <Clock className="h-5 w-5 text-warning" />;
+        return <Trash className="h-4 w-4 text-red-500" />;
+      case 'login':
+        return <User className="h-4 w-4 text-purple-500" />;
+      case 'document':
+        return <FileText className="h-4 w-4 text-orange-500" />;
+      case 'approve':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'reject':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
       default:
-        return <FileText className="h-5 w-5 text-primary" />;
+        return <ActivityIcon className="h-4 w-4 text-gray-500" />;
     }
-  };
-  
-  // Helper to get background for activity type
-  const getActivityBackground = (type: string) => {
-    switch (type) {
-      case 'create':
-        return 'bg-primary/10';
-      case 'update':
-        return 'bg-secondary/10';
-      case 'delete':
-        return 'bg-destructive/10';
-      case 'status_change':
-        return 'bg-success/10';
-      case 'due_date_change':
-        return 'bg-warning/10';
-      default:
-        return 'bg-primary/10';
-    }
-  };
-  
-  // Helper to format date
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+  }
 
   return (
     <Card>
-      <CardContent className="p-4">
-        <h3 className="text-lg font-medium mb-3">Recent Activity</h3>
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center py-6">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-6 text-destructive">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-            <p>Failed to load recent activities</p>
-          </div>
-        ) : activities && activities.length > 0 ? (
-          <div className="space-y-4">
-            {activities.map((activity) => (
-              <div key={activity.id} className="flex items-start pb-3 border-b border-gray-200 last:border-b-0 last:pb-0">
-                <div className={`rounded-full ${getActivityBackground(activity.activityType)} p-2 mr-3`}>
-                  {getActivityIcon(activity.activityType)}
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{activity.description}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatTimestamp(activity.timestamp)} - by {activity.userId}
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-medium flex items-center gap-2">
+          <ActivityIcon className="h-4 w-4" />
+          Recent Activity
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className={`${isMobile ? 'h-[250px]' : 'h-[350px]'}`}>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">Loading activities...</p>
+            </div>
+          ) : activities && activities.length > 0 ? (
+            <div className="space-y-4">
+              {activities.map((activity: Activity & { userName?: string }) => (
+                <div key={activity.id} className="flex gap-3">
+                  <div className="flex-shrink-0 mt-1">
+                    {getActivityIcon(activity.activityType)}
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <p className="text-sm">{activity.description}</p>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Clock className="mr-1 h-3 w-3" />
+                      <span>
+                        {activity.timestamp instanceof Date 
+                          ? format(activity.timestamp, 'MMM d, yyyy h:mm a')
+                          : activity.timestamp 
+                            ? format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a') 
+                            : 'Unknown date'}
+                      </span>
+                      <span className="mx-1">•</span>
+                      <User className="mr-1 h-3 w-3" />
+                      <span>{activity.userName || 'User'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 text-muted-foreground">
-            <p>No recent activities</p>
-          </div>
-        )}
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground">No recent activities</p>
+            </div>
+          )}
+        </ScrollArea>
       </CardContent>
     </Card>
   );

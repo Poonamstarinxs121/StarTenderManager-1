@@ -364,10 +364,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Activity methods
-  async getRecentActivities(limit: number = 5): Promise<Activity[]> {
+  async getRecentActivities(limit: number = 5): Promise<any[]> {
     return await db
       .select({
-        ...activities,
+        id: activities.id,
+        tenderId: activities.tenderId,
+        activityType: activities.activityType,
+        description: activities.description,
+        userId: activities.userId,
+        timestamp: activities.timestamp,
         userName: users.name,
       })
       .from(activities)
@@ -385,10 +390,15 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
   
-  async getActivitiesByTender(tenderId: number, limit: number = 20): Promise<Activity[]> {
+  async getActivitiesByTender(tenderId: number, limit: number = 20): Promise<any[]> {
     return await db
       .select({
-        ...activities,
+        id: activities.id,
+        tenderId: activities.tenderId,
+        activityType: activities.activityType,
+        description: activities.description,
+        userId: activities.userId,
+        timestamp: activities.timestamp,
         userName: users.name,
       })
       .from(activities)

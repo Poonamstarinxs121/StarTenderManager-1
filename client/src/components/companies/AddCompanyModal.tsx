@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ActivityLogger } from "@/utils/activity-logger";
 
 import {
   Dialog,
@@ -74,14 +75,33 @@ export default function AddCompanyModal({
     defaultValues,
   });
   
+  // Get current user for activity logging
+  const { data: currentUser } = useQuery({
+    queryKey: ['/api/users/current'],
+  });
+
   // Add/edit company mutation
   const mutation = useMutation({
     mutationFn: async (data: CompanyFormValues) => {
+      let response;
+      
       if (isEditing) {
-        return apiRequest(`/api/companies/${editId}`, "PATCH", data);
+        response = await apiRequest(`/api/companies/${editId}`, "PATCH", data);
+        
+        // Log activity for company update
+        if (currentUser?.id) {
+          ActivityLogger.logUpdate('company', data.name, currentUser.id);
+        }
       } else {
-        return apiRequest("/api/companies", "POST", data);
+        response = await apiRequest("/api/companies", "POST", data);
+        
+        // Log activity for company creation
+        if (currentUser?.id) {
+          ActivityLogger.logCreation('company', data.name, currentUser.id);
+        }
       }
+      
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -92,6 +112,7 @@ export default function AddCompanyModal({
       });
       form.reset(defaultValues);
       queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/activities/recent'] });
       onSuccess();
       onClose();
     },
