@@ -619,6 +619,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // LEAD ROUTES
+  app.get("/api/leads", async (req, res) => {
+    try {
+      const { status, source, search } = req.query;
+      const filters: any = {};
+      
+      if (status) filters.status = status as string;
+      if (source) filters.source = source as string;
+      if (search) filters.search = search as string;
+      
+      const leads = await storage.getLeads(filters);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json({ message: "Failed to retrieve leads" });
+    }
+  });
+
+  app.get("/api/leads/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid lead ID" });
+      }
+      
+      const lead = await storage.getLead(id);
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(lead);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve lead" });
+    }
+  });
+
+  app.post("/api/leads", validateBody(insertLeadSchema), async (req, res) => {
+    try {
+      const newLead = await storage.createLead(req.body);
+      res.status(201).json(newLead);
+    } catch (error) {
+      console.error("Error creating lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  app.patch("/api/leads/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid lead ID" });
+      }
+      
+      const updatedLead = await storage.updateLead(id, req.body);
+      if (!updatedLead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      res.status(500).json({ message: "Failed to update lead" });
+    }
+  });
+
+  app.delete("/api/leads/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid lead ID" });
+      }
+      
+      const success = await storage.deleteLead(id);
+      if (!success) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      res.status(500).json({ message: "Failed to delete lead" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
