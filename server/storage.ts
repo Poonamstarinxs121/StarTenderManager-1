@@ -1,4 +1,4 @@
-import { users, clients, tenders, documents, activities, roles, companies, customers } from "@shared/schema";
+import { users, clients, tenders, documents, activities, roles, companies, customers, leads } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, like, gte, lte, sql, count, or } from "drizzle-orm";
 import type {
@@ -17,7 +17,9 @@ import type {
   Role,
   InsertRole,
   Company,
-  InsertCompany
+  InsertCompany,
+  Lead,
+  InsertLead
 } from "@shared/schema";
 
 // Storage interface for the application
@@ -81,6 +83,13 @@ export interface IStorage {
   // Activity methods
   getRecentActivities(limit?: number): Promise<Activity[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
+  
+  // Lead methods
+  getLead(id: number): Promise<Lead | undefined>;
+  getLeads(filters?: { status?: string, source?: string, search?: string }): Promise<Lead[]>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined>;
+  deleteLead(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -518,6 +527,104 @@ export class DatabaseStorage implements IStorage {
   async createActivity(activity: InsertActivity): Promise<Activity> {
     const [newActivity] = await db.insert(activities).values(activity).returning();
     return newActivity;
+  }
+
+  // Lead methods
+  async getLead(id: number): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
+  }
+
+  async getLeads(filters?: { status?: string, source?: string, search?: string }): Promise<Lead[]> {
+    let query = db.select().from(leads);
+    
+    const conditions = [];
+    
+    if (filters?.status) {
+      conditions.push(eq(leads.status, filters.status));
+    }
+    
+    if (filters?.source) {
+      conditions.push(eq(leads.source, filters.source));
+    }
+    
+    if (filters?.search) {
+      const searchTerm = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(leads.title, searchTerm),
+          like(leads.company, searchTerm),
+          like(leads.contactPerson, searchTerm)
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(leads.createdAt));
+  }
+
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const [newLead] = await db.insert(leads).values({
+      ...lead,
+      updatedAt: new Date()
+    }).returning();
+    
+    // Add activity log
+    await this.createActivity({
+      tenderId: null,
+      activityType: 'CREATE_LEAD',
+      description: `New lead created: ${newLead.title}`,
+      userId: newLead.assignedTo || 1, // Use assigned user or default to admin
+    });
+    
+    return newLead;
+  }
+
+  async updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined> {
+    const [updatedLead] = await db
+      .update(leads)
+      .set({
+        ...lead,
+        updatedAt: new Date()
+      })
+      .where(eq(leads.id, id))
+      .returning();
+    
+    if (updatedLead) {
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'UPDATE_LEAD',
+        description: `Lead updated: ${updatedLead.title}`,
+        userId: lead.assignedTo || 1, // Use assigned user or default to admin
+      });
+    }
+    
+    return updatedLead;
+  }
+
+  async deleteLead(id: number): Promise<boolean> {
+    // Get lead before deleting for activity log
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    
+    if (lead) {
+      await db.delete(leads).where(eq(leads.id, id));
+      
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'DELETE_LEAD',
+        description: `Lead deleted: ${lead.title}`,
+        userId: lead.assignedTo || 1, // Use assigned user or default to admin
+      });
+      
+      return true;
+    }
+    
+    return false;
   }
 }
 
