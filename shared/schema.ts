@@ -144,6 +144,28 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   }),
 }));
 
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  company: text("company").notNull(),
+  contactPerson: text("contact_person").notNull(),
+  source: text("source").notNull(),
+  value: numeric("value").notNull().default("0"),
+  status: text("status").notNull().default("Prospective"),
+  assignedTo: integer("assigned_to").references(() => users.id),
+  dueDate: date("due_date").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const leadsRelations = relations(leads, ({ one }) => ({
+  assignee: one(users, {
+    fields: [leads.assignedTo],
+    references: [users.id],
+  }),
+}));
+
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
   tenderId: integer("tender_id").references(() => tenders.id),
@@ -173,6 +195,7 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({ id: tru
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, timestamp: true });
+export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Select types
 export type User = typeof users.$inferSelect;
@@ -183,6 +206,7 @@ export type Customer = typeof customers.$inferSelect;
 export type Tender = typeof tenders.$inferSelect;
 export type Document = typeof documents.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
+export type Lead = typeof leads.$inferSelect;
 
 // Insert types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -193,3 +217,4 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 export type InsertTender = z.infer<typeof insertTenderSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
+export type InsertLead = z.infer<typeof insertLeadSchema>;

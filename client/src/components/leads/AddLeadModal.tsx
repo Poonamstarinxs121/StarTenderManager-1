@@ -95,7 +95,7 @@ export default function AddLeadModal({
     company: "",
     contactPerson: "",
     value: 0,
-    source: "Website",
+    source: "GEM",
     status: "Prospective",
     assignedTo: undefined,
     dueDate: new Date(),
@@ -143,7 +143,7 @@ export default function AddLeadModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Lead" : "Add New Lead"}
@@ -241,11 +241,12 @@ export default function AddLeadModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="GEM">GEM</SelectItem>
+                        <SelectItem value="MP Tender">MP Tender</SelectItem>
+                        <SelectItem value="Def Proc">Def Proc</SelectItem>
+                        <SelectItem value="Eprocure">Eprocure</SelectItem>
                         <SelectItem value="Website">Website</SelectItem>
                         <SelectItem value="Referral">Referral</SelectItem>
-                        <SelectItem value="Social Media">Social Media</SelectItem>
-                        <SelectItem value="Email Campaign">Email Campaign</SelectItem>
-                        <SelectItem value="Conference">Conference</SelectItem>
                         <SelectItem value="Direct Contact">Direct Contact</SelectItem>
                       </SelectContent>
                     </Select>
