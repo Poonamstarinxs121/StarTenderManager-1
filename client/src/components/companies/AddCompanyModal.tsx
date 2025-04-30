@@ -162,6 +162,51 @@ export default function AddCompanyModal({
               )}
             />
             
+            {/* Company Registration Details */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="cin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>CIN</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Corporate Identity Number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="pan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PAN</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Permanent Account Number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="gst"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GST</FormLabel>
+                    <FormControl>
+                      <Input placeholder="GST Number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
             <FormField
               control={form.control}
               name="contactPerson"
@@ -206,19 +251,35 @@ export default function AddCompanyModal({
               />
             </div>
             
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location*</FormLabel>
-                  <FormControl>
-                    <Input placeholder="City, Country" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location*</FormLabel>
+                    <FormControl>
+                      <Input placeholder="City, Country" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="pincode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PIN Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Postal / ZIP Code" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             
             <FormField
               control={form.control}
