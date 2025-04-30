@@ -7,7 +7,8 @@ import {
   insertClientSchema, 
   insertDocumentSchema, 
   insertActivitySchema,
-  insertRoleSchema
+  insertRoleSchema,
+  insertCompanySchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";

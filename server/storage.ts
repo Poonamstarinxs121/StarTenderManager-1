@@ -36,6 +36,13 @@ export interface IStorage {
   deleteRole(id: number): Promise<boolean>;
   getUsersCountByRoleId(roleId: number): Promise<number>;
 
+  // Company methods
+  getCompany(id: number): Promise<Company | undefined>;
+  getCompanies(): Promise<Company[]>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: number, company: Partial<InsertCompany>): Promise<Company | undefined>;
+  deleteCompany(id: number): Promise<boolean>;
+
   // Client methods
   getClient(id: number): Promise<Client | undefined>;
   getClients(): Promise<Client[]>;
@@ -140,6 +147,35 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.roleId, roleId));
     return Number(result.count);
+  }
+
+  // Company methods
+  async getCompany(id: number): Promise<Company | undefined> {
+    const [company] = await db.select().from(companies).where(eq(companies.id, id));
+    return company;
+  }
+
+  async getCompanies(): Promise<Company[]> {
+    return await db.select().from(companies);
+  }
+
+  async createCompany(company: InsertCompany): Promise<Company> {
+    const [newCompany] = await db.insert(companies).values(company).returning();
+    return newCompany;
+  }
+
+  async updateCompany(id: number, company: Partial<InsertCompany>): Promise<Company | undefined> {
+    const [updatedCompany] = await db
+      .update(companies)
+      .set(company)
+      .where(eq(companies.id, id))
+      .returning();
+    return updatedCompany;
+  }
+
+  async deleteCompany(id: number): Promise<boolean> {
+    await db.delete(companies).where(eq(companies.id, id));
+    return true;
   }
 
   // Client methods
