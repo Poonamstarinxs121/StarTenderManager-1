@@ -72,35 +72,27 @@ export default function RoleModal({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<number | null>(null);
   
-  // Mock roles - in a real app, this would come from the API
-  const mockRoles: Role[] = [
-    { id: 1, name: "Admin", description: "Full system access", usersCount: 2 },
-    { id: 2, name: "Manager", description: "Can manage projects and users", usersCount: 5 },
-    { id: 3, name: "User", description: "Regular user access", usersCount: 15 },
-    { id: 4, name: "Guest", description: "Limited read-only access", usersCount: 8 }
-  ];
-  
-  // In a real implementation, we would use this query
-  // const { data: roles = [], isLoading } = useQuery({
-  //   queryKey: ['/api/roles'],
-  //   queryFn: async () => {
-  //     try {
-  //       const response = await fetch('/api/roles');
-  //       if (!response.ok) {
-  //         throw new Error(`Error: ${response.status}`);
-  //       }
-  //       const data = await response.json();
-  //       return data || [];
-  //     } catch (error) {
-  //       console.error("Failed to fetch roles:", error);
-  //       return [];
-  //     }
-  //   }
-  // });
-  
-  // For now, use the mock data
-  const roles = mockRoles;
-  const isLoading = false;
+  // Fetch roles from the API
+  const { 
+    data: roles = [], 
+    isLoading,
+    refetch: refetchRoles 
+  } = useQuery({
+    queryKey: ['/api/roles'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/roles');
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`);
+        }
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Failed to fetch roles:", error);
+        return [];
+      }
+    }
+  });
   
   // Default form values
   const defaultValues: RoleFormValues = {
@@ -113,23 +105,14 @@ export default function RoleModal({
     defaultValues,
   });
   
-  // Add/edit role mutation (disabled for mock)
+  // Add/edit role mutation
   const mutation = useMutation({
     mutationFn: async (data: RoleFormValues) => {
-      // In a real app, this would make an API call
-      // For now, just simulate success
-      return new Promise<Role>((resolve) => {
-        // Simulate API delay
-        setTimeout(() => {
-          const newRole = {
-            id: editingRoleId || roles.length + 1,
-            name: data.name,
-            description: data.description,
-            usersCount: 0,
-          };
-          resolve(newRole);
-        }, 500);
-      });
+      if (editingRoleId) {
+        return apiRequest(`/api/roles/${editingRoleId}`, "PUT", data);
+      } else {
+        return apiRequest("/api/roles", "POST", data);
+      }
     },
     onSuccess: () => {
       toast({
@@ -139,45 +122,45 @@ export default function RoleModal({
           : "The role has been added successfully.",
       });
       form.reset(defaultValues);
-      // In a real app, invalidate the roles query
-      // queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
       setIsAddingRole(false);
       setEditingRoleId(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
-        description: `Failed to ${editingRoleId ? "update" : "create"} role. ${error.message}`,
+        description: `Failed to ${editingRoleId ? "update" : "create"} role. ${error.message || error}`,
         variant: "destructive",
       });
     },
   });
   
-  // Delete role mutation (disabled for mock)
+  // Delete role mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      // In a real app, this would make an API call
-      // For now, just simulate success
-      return new Promise<void>((resolve) => {
-        // Simulate API delay
-        setTimeout(() => {
-          resolve();
-        }, 500);
-      });
+      return apiRequest(`/api/roles/${id}`, "DELETE");
     },
     onSuccess: () => {
       toast({
         title: "Role deleted",
         description: "The role has been deleted successfully.",
       });
-      // In a real app, invalidate the roles query
-      // queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/roles'] });
       setDeleteDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      let errorMessage = "Failed to delete role.";
+      
+      // Check if the error is due to users being assigned to this role
+      if (error.message && error.message.includes("Cannot delete role that has assigned users")) {
+        errorMessage = "Cannot delete a role that has users assigned to it. Please reassign users first.";
+      } else {
+        errorMessage += ` ${error.message || error}`;
+      }
+      
       toast({
         title: "Error",
-        description: `Failed to delete role. ${error.message}`,
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -189,7 +172,7 @@ export default function RoleModal({
     setIsAddingRole(true);
   };
   
-  const handleEditRoleClick = (role: Role) => {
+  const handleEditRoleClick = (role: any) => {
     form.reset({
       name: role.name,
       description: role.description || "",
@@ -303,7 +286,7 @@ export default function RoleModal({
                       </TableCell>
                     </TableRow>
                   ) : roles.length > 0 ? (
-                    roles.map((role) => (
+                    roles.map((role: any) => (
                       <TableRow key={role.id}>
                         <TableCell className="font-medium">{role.name}</TableCell>
                         <TableCell>{role.description || "-"}</TableCell>
