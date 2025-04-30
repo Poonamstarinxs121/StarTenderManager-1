@@ -15,8 +15,8 @@ export default function TenderManagement() {
   
   // Filter states
   const [filters, setFilters] = useState({
-    status: "",
-    clientId: "",
+    status: "all",
+    clientId: "all",
     startDate: "",
     endDate: "",
     search: "",
@@ -30,8 +30,8 @@ export default function TenderManagement() {
   const getQueryString = () => {
     const params = new URLSearchParams();
     
-    if (filters.status) params.append("status", filters.status);
-    if (filters.clientId) params.append("clientId", filters.clientId);
+    if (filters.status && filters.status !== "all") params.append("status", filters.status);
+    if (filters.clientId && filters.clientId !== "all" && filters.clientId !== "no-clients") params.append("clientId", filters.clientId);
     if (filters.startDate) params.append("startDate", filters.startDate);
     if (filters.endDate) params.append("endDate", filters.endDate);
     if (filters.search) params.append("search", filters.search);
@@ -77,8 +77,8 @@ export default function TenderManagement() {
   
   const handleResetFilters = () => {
     setFilters({
-      status: "",
-      clientId: "",
+      status: "all",
+      clientId: "all",
       startDate: "",
       endDate: "",
       search: "",

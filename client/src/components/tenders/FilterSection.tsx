@@ -55,8 +55,8 @@ export default function FilterSection({
   
   const handleResetFilters = () => {
     const resetFilters = {
-      status: "",
-      clientId: "",
+      status: "all",
+      clientId: "all",
       startDate: "",
       endDate: "",
       search: "",
@@ -80,7 +80,7 @@ export default function FilterSection({
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Statuses</SelectItem>
+                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
@@ -99,12 +99,16 @@ export default function FilterSection({
                 <SelectValue placeholder="All Clients" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Clients</SelectItem>
-                {clients?.map((client) => (
-                  <SelectItem key={client.id} value={client.id.toString()}>
-                    {client.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">All Clients</SelectItem>
+                {clients && clients.length > 0 ? (
+                  clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id.toString()}>
+                      {client.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-clients">No clients available</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

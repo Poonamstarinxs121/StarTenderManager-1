@@ -202,11 +202,15 @@ export default function AddTenderModal({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {clients?.map((client) => (
-                            <SelectItem key={client.id} value={client.id.toString()}>
-                              {client.name}
-                            </SelectItem>
-                          ))}
+                          {clients && clients.length > 0 ? (
+                            clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id.toString()}>
+                                {client.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-clients">No clients available</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
