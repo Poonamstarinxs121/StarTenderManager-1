@@ -47,5 +47,9 @@ export interface User {
   id: number;
   username: string;
   name: string;
+  email?: string;
   role: string;
+  department?: string;
+  status?: string;
+  lastLogin?: string | Date;
 }
