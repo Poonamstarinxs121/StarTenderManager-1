@@ -39,10 +39,14 @@ export const rolesRelations = relations(roles, ({ many }) => ({
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  cin: text("cin"),  // Corporate Identity Number
+  pan: text("pan"),  // Permanent Account Number
+  gst: text("gst"),  // Goods and Services Tax Number
   contactPerson: text("contact_person"),
   email: text("email"),
   phone: text("phone"),
   location: text("location"),
+  pincode: text("pincode"),  // PIN code / Postal code
   status: text("status").default("active"),
   createdAt: timestamp("created_at").defaultNow(),
 });

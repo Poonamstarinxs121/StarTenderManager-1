@@ -35,10 +35,14 @@ import {
 // Company form schema
 const companyFormSchema = z.object({
   name: z.string().min(2, { message: "Company name must be at least 2 characters." }),
+  cin: z.string().optional(),  // CIN field (Corporate Identity Number)
+  pan: z.string().optional(),  // PAN field (Permanent Account Number)
+  gst: z.string().optional(),  // GST field (Goods and Services Tax Number)
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
   phone: z.string().min(6, { message: "Please enter a valid phone number." }),
   location: z.string().min(2, { message: "Location must be at least 2 characters." }),
+  pincode: z.string().optional(),  // PIN code / Postal code
   status: z.string().min(1, { message: "Please select a status." }),
 });
 
@@ -63,10 +67,14 @@ export default function AddCompanyModal({
   // Default values for the form
   const defaultValues: CompanyFormValues = {
     name: "",
+    cin: "",
+    pan: "",
+    gst: "",
     contactPerson: "",
     email: "",
     phone: "",
     location: "",
+    pincode: "",
     status: "Active",
   };
   
