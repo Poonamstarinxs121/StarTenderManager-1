@@ -58,9 +58,14 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
   const [activeTab, setActiveTab] = useState("basic-details");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Fetch clients for dropdown
+  // Fetch clients and companies for dropdowns
   const { data: clients } = useQuery({
     queryKey: ['/api/clients'],
+  });
+  
+  // Fetch companies
+  const { data: companies } = useQuery({
+    queryKey: ['/api/companies'],
   });
   
   // Create form with validation
@@ -153,9 +158,27 @@ export default function NewTenderProcess({ onCancel, onSuccess }: NewTenderProce
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Participating Company</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter company name" {...field} />
-                          </FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a company" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Array.isArray(companies) && companies.length > 0 ? (
+                                companies.map((company: any) => (
+                                  <SelectItem key={company.id} value={company.name}>
+                                    {company.name}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="no-companies">No companies available</SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
