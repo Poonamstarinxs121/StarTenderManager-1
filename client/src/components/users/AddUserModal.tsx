@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,12 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// User form schema
+// User form schema (password optional for editing)
 const userFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   username: z.string().min(3, { message: "Username must be at least 3 characters." }),
   email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters." }).optional(),
   role: z.string().min(1, { message: "Please select a role." }),
   department: z.string().optional(),
 });
@@ -58,13 +58,23 @@ export default function AddUserModal({
   const { toast } = useToast();
   const isEditing = !!editId;
   
+  // Fetch roles from backend
+  const { data: roles = [] } = useQuery({
+    queryKey: ['/api/roles'],
+    queryFn: async () => {
+      const res = await fetch('/api/roles');
+      if (!res.ok) throw new Error('Failed to fetch roles');
+      return res.json();
+    },
+  });
+  
   // Default values for the form
   const defaultValues: UserFormValues = {
     name: "",
     username: "",
     email: "",
     password: "",
-    role: "user",
+    role: "",
     department: "",
   };
   
@@ -73,9 +83,38 @@ export default function AddUserModal({
     defaultValues,
   });
   
+  // Fetch user data when editing
+  useEffect(() => {
+    if (isEditing && editId) {
+      fetch(`/api/users`)
+        .then((res) => res.json())
+        .then((users) => {
+          const user = users.find((u: any) => u.id === editId);
+          if (user) {
+            form.reset({
+              name: user.name || "",
+              username: user.username || "",
+              email: user.email || "",
+              password: "", // Don't prefill password
+              role: user.role || "user",
+              department: user.department || "",
+            });
+          }
+        });
+    } else {
+      form.reset(defaultValues);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editId]);
+  
   // Add/edit user mutation
   const mutation = useMutation({
     mutationFn: async (data: UserFormValues) => {
+      // Remove password if editing and not provided
+      if (isEditing && !data.password) {
+        const { password, ...rest } = data;
+        return apiRequest(`/api/users/${editId}`, "PATCH", rest);
+      }
       if (isEditing) {
         return apiRequest(`/api/users/${editId}`, "PATCH", data);
       } else {
@@ -104,8 +143,11 @@ export default function AddUserModal({
   });
   
   const onSubmit = (data: UserFormValues) => {
+    console.log("Submitting", data);
     mutation.mutate(data);
   };
+  
+  console.log("Form errors:", form.formState.errors);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -170,7 +212,7 @@ export default function AddUserModal({
                   <FormItem>
                     <FormLabel>Password*</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="Enter Password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -185,17 +227,20 @@ export default function AddUserModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role*</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
+                          <SelectValue placeholder="Select Role" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="guest">Guest</SelectItem>
+                        {roles.length === 0 ? (
+                          <SelectItem value="" disabled>No roles found</SelectItem>
+                        ) : (
+                          roles.map((role: any) => (
+                            <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />

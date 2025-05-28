@@ -147,13 +147,15 @@ export const documentsRelations = relations(documents, ({ one }) => ({
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  company: text("company").notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
   contactPerson: text("contact_person").notNull(),
   source: text("source").notNull(),
-  value: numeric("value").notNull().default("0"),
-  status: text("status").notNull().default("Prospective"),
+  emdValue: numeric("emd_value").notNull().default("0"),
+  status: text("status").notNull().default("New"),
   assignedTo: integer("assigned_to").references(() => users.id),
-  dueDate: date("due_date").notNull(),
+  tenderId: text("tender_id"),
+  bidStartDate: timestamp("bid_start_date"),
+  bidEndDate: timestamp("bid_end_date"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -195,7 +197,19 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({ id: tru
 export const insertTenderSchema = createInsertSchema(tenders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, uploadedAt: true });
 export const insertActivitySchema = createInsertSchema(activities).omit({ id: true, timestamp: true });
-export const insertLeadSchema = createInsertSchema(leads).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLeadSchema = z.object({
+  title: z.string().min(1),
+  companyId: z.number().min(1),
+  contactPerson: z.string().min(1),
+  source: z.string().min(1),
+  emdValue: z.string().default("0"),
+  status: z.string().default("New"),
+  tenderId: z.string().optional(),
+  bidStartDate: z.coerce.date().optional(),
+  bidEndDate: z.coerce.date().optional(),
+  notes: z.string().optional(),
+  assignedTo: z.number().optional(),
+});
 
 // Select types
 export type User = typeof users.$inferSelect;

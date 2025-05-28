@@ -42,183 +42,174 @@ import { format } from "date-fns";
 
 // Lead form schema
 const leadFormSchema = z.object({
-  title: z.string().min(2, { message: "Title must be at least 2 characters." }),
-  company: z.string().min(2, { message: "Company must be at least 2 characters." }),
-  contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
-  value: z.coerce.number().min(0, { message: "Value must be a positive number." }),
-  source: z.string().min(1, { message: "Please select a lead source." }),
-  status: z.string().min(1, { message: "Please select a status." }),
-  assignedTo: z.number().optional(),
-  dueDate: z.date({ required_error: "Due date is required." }),
+  title: z.string().min(1, 'Title is required'),
+  companyId: z.number().min(1, 'Company is required'),
+  contactPerson: z.string().min(1, 'Contact person is required'),
+  source: z.string().min(1, 'Source is required'),
+  emdValue: z.string().default("0"),
+  status: z.string().default("New"),
+  tenderId: z.string().optional(),
+  bidStartDate: z.string().optional(),
+  bidEndDate: z.string().optional(),
   notes: z.string().optional(),
 });
 
-type LeadFormValues = z.infer<typeof leadFormSchema>;
+type LeadFormData = z.infer<typeof leadFormSchema>;
 
 interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editId?: number | null;
   onSuccess: () => void;
+  lead?: any;
 }
 
 export default function AddLeadModal({
   isOpen,
   onClose,
-  editId,
   onSuccess,
+  lead,
 }: AddLeadModalProps) {
   const { toast } = useToast();
-  const isEditing = !!editId;
   
-  // Fetch users for the assignedTo dropdown
-  const { data: users = [] } = useQuery({
-    queryKey: ['/api/users'],
+  const { data: companies = [] } = useQuery({
+    queryKey: ['companies'],
     queryFn: async () => {
-      try {
-        const response = await fetch('/api/users');
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        return await response.json();
-      } catch (error) {
-        console.error("Failed to fetch users:", error);
-        return [];
-      }
+      const response = await fetch('/api/companies');
+      if (!response.ok) throw new Error('Failed to fetch companies');
+      return response.json();
     },
-    enabled: isOpen // Only fetch when modal is open
+    enabled: isOpen
   });
   
-  // Default values for the form
-  const defaultValues: LeadFormValues = {
-    title: "",
-    company: "",
-    contactPerson: "",
-    value: 0,
-    source: "GEM",
-    status: "Prospective",
-    assignedTo: undefined,
-    dueDate: new Date(),
-    notes: "",
-  };
-  
-  const form = useForm<LeadFormValues>({
+  const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
-    defaultValues,
+    defaultValues: {
+      title: '',
+      companyId: 0,
+      contactPerson: '',
+      source: '',
+      emdValue: "0",
+      status: 'New',
+      tenderId: '',
+      bidStartDate: '',
+      bidEndDate: '',
+      notes: '',
+    },
   });
   
-  // Add/edit lead mutation
-  const mutation = useMutation({
-    mutationFn: async (data: LeadFormValues) => {
-      if (isEditing) {
-        return apiRequest(`/api/leads/${editId}`, "PATCH", data);
-      } else {
-        return apiRequest("/api/leads", "POST", data);
-      }
-    },
-    onSuccess: () => {
-      toast({
-        title: isEditing ? "Lead updated" : "Lead created",
-        description: isEditing 
-          ? "The lead has been updated successfully." 
-          : "The lead has been added successfully.",
+  useEffect(() => {
+    if (lead) {
+      form.reset({
+        title: lead.title,
+        companyId: lead.companyId,
+        contactPerson: lead.contactPerson,
+        source: lead.source,
+        emdValue: lead.emdValue?.toString() || "0",
+        status: lead.status,
+        tenderId: lead.tenderId,
+        bidStartDate: lead.bidStartDate,
+        bidEndDate: lead.bidEndDate,
+        notes: lead.notes || '',
       });
-      form.reset(defaultValues);
-      queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+    } else {
+      form.reset({
+        title: '',
+        companyId: 0,
+        contactPerson: '',
+        source: '',
+        emdValue: "0",
+        status: 'New',
+        tenderId: '',
+        bidStartDate: '',
+        bidEndDate: '',
+        notes: '',
+      });
+    }
+  }, [lead, form]);
+  
+  const onSubmit = async (data: LeadFormData) => {
+    try {
+      const url = lead ? `/api/leads/${lead.id}` : '/api/leads';
+      const method = lead ? 'PUT' : 'POST';
+      // Convert bidStartDate and bidEndDate to Date objects if present
+      const payload = {
+        ...data,
+        bidStartDate: data.bidStartDate ? new Date(data.bidStartDate) : undefined,
+        bidEndDate: data.bidEndDate ? new Date(data.bidEndDate) : undefined,
+      };
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save lead');
+      }
+
+      toast({
+        title: lead ? "Lead updated" : "Lead created",
+        description: lead ? "The lead has been updated successfully." : "The lead has been created successfully.",
+      });
+
       onSuccess();
       onClose();
-    },
-    onError: (error) => {
+    } catch (error) {
+      console.error('Error saving lead:', error);
       toast({
         title: "Error",
-        description: `Failed to ${isEditing ? "update" : "create"} lead. ${error.message}`,
+        description: error instanceof Error ? error.message : "Failed to save lead",
         variant: "destructive",
       });
-    },
-  });
-  
-  const onSubmit = (data: LeadFormValues) => {
-    mutation.mutate(data);
+    }
   };
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Lead" : "Add New Lead"}
-          </DialogTitle>
+          <DialogTitle>{lead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Lead Title */}
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Lead Title*</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter lead title" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Company and Contact Person */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="company"
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title*</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter lead title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="companyId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Company*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter company name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="contactPerson"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Person*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter contact person" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            {/* Assigned To and Source */}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="assignedTo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assigned To</FormLabel>
-                    <Select 
-                      onValueChange={(value) => field.onChange(Number(value))} 
-                      defaultValue={field.value?.toString()}
+                    <Select
+                      value={field.value ? field.value.toString() : ""}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select user" />
+                          <SelectValue placeholder="Select Company" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.map((user: any) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.name}
+                        {companies.map((company: any) => (
+                          <SelectItem key={company.id} value={company.id.toString()}>
+                            {company.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -227,14 +218,33 @@ export default function AddLeadModal({
                   </FormItem>
                 )}
               />
-              
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="contactPerson"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Person*</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter contact person name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="source"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Source*</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select source" />
@@ -242,12 +252,9 @@ export default function AddLeadModal({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="GEM">GEM</SelectItem>
-                        <SelectItem value="MP Tender">MP Tender</SelectItem>
-                        <SelectItem value="Def Proc">Def Proc</SelectItem>
+                        <SelectItem value="Mp Tender">Mp Tender</SelectItem>
                         <SelectItem value="Eprocure">Eprocure</SelectItem>
-                        <SelectItem value="Website">Website</SelectItem>
-                        <SelectItem value="Referral">Referral</SelectItem>
-                        <SelectItem value="Direct Contact">Direct Contact</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -255,94 +262,98 @@ export default function AddLeadModal({
                 )}
               />
             </div>
-            
-            {/* Value and Status */}
+
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="value"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Value*</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <FormField
                 control={form.control}
                 name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status*</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="Prospective">Prospective</SelectItem>
-                        <SelectItem value="Open">Open</SelectItem>
-                        <SelectItem value="Bid Participating">Bid Participating</SelectItem>
-                        <SelectItem value="Technical">Technical</SelectItem>
-                        <SelectItem value="Bid to RA">Bid to RA</SelectItem>
-                        <SelectItem value="Customer">Customer</SelectItem>
                         <SelectItem value="New">New</SelectItem>
-                        <SelectItem value="Contacted">Contacted</SelectItem>
                         <SelectItem value="Qualified">Qualified</SelectItem>
                         <SelectItem value="Proposal">Proposal</SelectItem>
                         <SelectItem value="Negotiation">Negotiation</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
+                        <SelectItem value="Closed Won">Closed Won</SelectItem>
+                        <SelectItem value="Closed Lost">Closed Lost</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="emdValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>EMD Value</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="Enter EMD value" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            
-            {/* Due Date */}
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Due Date*</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className="w-full pl-3 text-left font-normal"
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {/* Notes */}
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tenderId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tender ID</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter tender ID" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="bidEndDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bid End Date</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="bidStartDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bid Start Date</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="notes"
@@ -350,9 +361,9 @@ export default function AddLeadModal({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter any additional notes about this lead"
-                      className="min-h-[100px]"
+                    <Textarea
+                      placeholder="Enter additional notes"
+                      className="h-24"
                       {...field}
                     />
                   </FormControl>
@@ -360,24 +371,13 @@ export default function AddLeadModal({
                 </FormItem>
               )}
             />
-            
-            {/* Form Actions */}
+
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                disabled={mutation.isPending}
-              >
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
-                type="submit"
-                disabled={mutation.isPending}
-              >
-                {mutation.isPending ? 
-                  (isEditing ? "Updating..." : "Creating...") : 
-                  (isEditing ? "Update" : "Create")}
+              <Button type="submit">
+                {lead ? 'Update Lead' : 'Create Lead'}
               </Button>
             </DialogFooter>
           </form>

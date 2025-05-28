@@ -64,8 +64,8 @@ export default function CustomersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<number | null>(null);
   
-  // Fetch Customers
-  const { data: customersData = [], isLoading, refetch } = useQuery({
+  // Fetch customers
+  const { data: customers = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/customers'],
     queryFn: async () => {
       try {
@@ -127,62 +127,32 @@ export default function CustomersPage() {
     }
   };
   
+  const handleViewDetails = (customer: Customer) => {
+    setViewingCustomer(customer);
+    setViewModalOpen(true);
+  };
+  
+  const handleSendEmail = (customer: Customer) => {
+    window.location.href = `mailto:${customer.email}`;
+  };
+  
+  const handleCallCustomer = (customer: Customer) => {
+    window.location.href = `tel:${customer.phone}`;
+  };
+  
   // Use demo data if API returns empty
-  const useDemo = !isLoading && Array.isArray(customersData) && customersData.length === 0 && !searchQuery;
+  const useDemo = false;
   
   // Demo Customers for empty state
-  const demoCustomers: Customer[] = [
-    {
-      id: 1,
-      name: "Alice Richardson",
-      company: "Global Industries",
-      email: "alice@globalindustries.com",
-      phone: "+1 555-123-4567",
-      status: "Active",
-      type: "Corporate",
-      lastContact: "2023-11-15"
-    },
-    {
-      id: 2,
-      name: "David Chen",
-      company: "Pacific Solutions",
-      email: "david.chen@pacificsolutions.com",
-      phone: "+1 555-987-6543",
-      status: "Active",
-      type: "Government",
-      lastContact: "2023-12-01"
-    },
-    {
-      id: 3,
-      name: "Emily Johnson",
-      company: "Eco Innovations",
-      email: "emily@ecoinnovations.org",
-      phone: "+1 555-456-7890",
-      status: "Inactive",
-      type: "Non-profit",
-      lastContact: "2023-10-22"
-    },
-    {
-      id: 4,
-      name: "Mohammed Al-Farsi",
-      company: "United Development",
-      email: "mohammed@uniteddev.com",
-      phone: "+971 55 123 4567",
-      status: "Active",
-      type: "Corporate",
-      lastContact: "2023-12-10"
-    }
-  ];
-  
-  const customers = useDemo ? demoCustomers : customersData;
+  const demoCustomers: Customer[] = [];
   
   const filteredCustomers = customers
-    .filter((customer) => 
+    .filter((customer: Customer) => 
       customer.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email?.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .filter((customer) => {
+    .filter((customer: Customer) => {
       if (activeTab === "all") return true;
       if (activeTab === "active") return customer.status === "Active";
       if (activeTab === "inactive") return customer.status === "Inactive";

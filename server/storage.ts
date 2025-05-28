@@ -531,13 +531,31 @@ export class DatabaseStorage implements IStorage {
 
   // Lead methods
   async getLead(id: number): Promise<Lead | undefined> {
-    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    const [lead] = await db
+      .select({
+        id: leads.id,
+        title: leads.title,
+        companyId: leads.companyId,
+        contactPerson: leads.contactPerson,
+        source: leads.source,
+        emdValue: leads.emdValue,
+        status: leads.status,
+        assignedTo: leads.assignedTo,
+        tenderId: leads.tenderId,
+        bidStartDate: leads.bidStartDate,
+        bidEndDate: leads.bidEndDate,
+        notes: leads.notes,
+        createdAt: leads.createdAt,
+        updatedAt: leads.updatedAt,
+        companyName: companies.name,
+      })
+      .from(leads)
+      .leftJoin(companies, eq(leads.companyId, companies.id))
+      .where(eq(leads.id, id));
     return lead;
   }
 
   async getLeads(filters?: { status?: string, source?: string, search?: string }): Promise<Lead[]> {
-    let query = db.select().from(leads);
-    
     const conditions = [];
     
     if (filters?.status) {
@@ -553,34 +571,74 @@ export class DatabaseStorage implements IStorage {
       conditions.push(
         or(
           like(leads.title, searchTerm),
-          like(leads.company, searchTerm),
+          like(companies.name, searchTerm),
           like(leads.contactPerson, searchTerm)
         )
       );
     }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-    
-    return await query.orderBy(desc(leads.createdAt));
+    const results = await db
+      .select({
+        id: leads.id,
+        title: leads.title,
+        companyId: leads.companyId,
+        contactPerson: leads.contactPerson,
+        source: leads.source,
+        emdValue: leads.emdValue,
+        status: leads.status,
+        assignedTo: leads.assignedTo,
+        tenderId: leads.tenderId,
+        bidStartDate: leads.bidStartDate,
+        bidEndDate: leads.bidEndDate,
+        notes: leads.notes,
+        createdAt: leads.createdAt,
+        updatedAt: leads.updatedAt,
+        companyName: companies.name,
+      })
+      .from(leads)
+      .leftJoin(companies, eq(leads.companyId, companies.id))
+      .where(whereClause || sql`TRUE`)
+      .orderBy(desc(leads.createdAt));
+
+    return results;
   }
 
   async createLead(lead: InsertLead): Promise<Lead> {
-    const [newLead] = await db.insert(leads).values({
+    // Ensure required fields are present and properly formatted
+    const leadData = {
       ...lead,
-      updatedAt: new Date()
-    }).returning();
-    
-    // Add activity log
-    await this.createActivity({
-      tenderId: null,
-      activityType: 'CREATE_LEAD',
-      description: `New lead created: ${newLead.title}`,
-      userId: newLead.assignedTo || 1, // Use assigned user or default to admin
-    });
-    
-    return newLead;
+      emdValue: lead.emdValue || "0",
+      status: lead.status || "New",
+      updatedAt: new Date(),
+      // Ensure dates are in the correct format (bid dates are handled by Zod coerce)
+      bidStartDate: lead.bidStartDate,
+      bidEndDate: lead.bidEndDate
+    };
+
+    try {
+      const [newLead] = await db.insert(leads).values(leadData).returning();
+
+      // Add activity log
+      await this.createActivity({
+        tenderId: null,
+        activityType: 'CREATE_LEAD',
+        description: `New lead created: ${newLead.title}`,
+        userId: newLead.assignedTo || 1, // Use assigned user or default to admin
+      });
+
+      // Fetch the complete lead with company information
+      const createdLead = await this.getLead(newLead.id);
+      if (!createdLead) {
+        throw new Error('Failed to fetch created lead');
+      }
+      return createdLead;
+    } catch (error) {
+      console.error('Error creating lead:', error);
+      // Re-throw a generic error for security, or pass a more specific one if safe
+      throw new Error('Failed to create lead.');
+    }
   }
 
   async updateLead(id: number, lead: Partial<InsertLead>): Promise<Lead | undefined> {
@@ -601,9 +659,12 @@ export class DatabaseStorage implements IStorage {
         description: `Lead updated: ${updatedLead.title}`,
         userId: lead.assignedTo || 1, // Use assigned user or default to admin
       });
+      
+      // Fetch the complete lead with company information
+      return await this.getLead(id);
     }
     
-    return updatedLead;
+    return undefined;
   }
 
   async deleteLead(id: number): Promise<boolean> {
